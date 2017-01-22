@@ -6,9 +6,14 @@ defmodule PingPong do
 
     iex --sname node1 --cookie fudge
     iex --sname node2 --cookie fudge
+
+    or if using IP addresses use:
+
+    iex --name node1@127.0.0.1 --cookie fudge -S mix
+    iex --name node2@127.0.0.1 --cookie fudge -S mix
   """
 
-  @remote :node2@Baggins
+  @remote :"node2@127.0.0.1"
 
   @doc """
   When a :ping message is received, return a :pong
@@ -16,8 +21,6 @@ defmodule PingPong do
   def ping do
     receive do
       {from, :ping} ->
-        :timer.sleep 1000
-        IO.puts "ping"
         send from, {self(), :pong}
     end
     ping
@@ -30,13 +33,22 @@ defmodule PingPong do
   def pong(count \\ 0) do
     receive do
       {from, :pong} ->
-        :timer.sleep 1000
-        IO.puts "pong"
         send from, {self(), :ping}
     end
-    if (count < 9) do
+    if (count < 10000) do
       pong(count + 1)
+    else
+      IO.puts "Done!"
     end
+  end
+
+  @doc """
+  Spawn local and remote ping pong processes.
+  """
+  def setup() do
+    ping_pid = Node.spawn @remote, __MODULE__, :ping, []
+    pong_pid = spawn __MODULE__, :pong, []
+    send ping_pid, {pong_pid, :ping}
   end
 
   @doc """
@@ -46,15 +58,11 @@ defmodule PingPong do
   """
   def start do
     case Node.connect(@remote) do
-      true -> (fn ->
-        ping_pid = Node.spawn @remote, __MODULE__, :ping, []
-        pong_pid = spawn __MODULE__, :pong, []
-        send ping_pid, {pong_pid, :ping}
-      end).()
+      true ->
+        setup()
       reason ->
         IO.puts "Could not connect to remote machine, reason: #{reason}"
         System.halt(0)
     end
   end
 end
-
