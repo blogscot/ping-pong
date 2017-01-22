@@ -13,7 +13,7 @@ defmodule PingPong do
     iex --name node2@127.0.0.1 --cookie fudge -S mix
   """
 
-  @remote :"node2@127.0.0.1"
+  @remote :"node2@192.168.56.102"
 
   @doc """
   When a :ping message is received, return a :pong
@@ -23,7 +23,7 @@ defmodule PingPong do
       {from, :ping} ->
         send from, {self(), :pong}
     end
-    ping
+    ping()
   end
 
   @doc """
