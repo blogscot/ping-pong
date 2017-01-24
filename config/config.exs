@@ -21,6 +21,8 @@ use Mix.Config
 #     config :logger, level: :info
 #
 
+  config :ping_pong, remote: :"node2@127.0.0.1"
+
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment
 # by uncommenting the line below and defining dev.exs, test.exs and such.
