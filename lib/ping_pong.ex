@@ -13,7 +13,7 @@ defmodule PingPong do
     iex --name node2@127.0.0.1 --cookie fudge -S mix
   """
 
-  # @remote :"node2@192.168.56.102"
+  @max_count 10_000
 
   @doc """
   When a :ping message is received, return a :pong
@@ -28,24 +28,25 @@ defmodule PingPong do
 
   @doc """
   When a :pong message is recieved return a :ping
-  This repeats 10_000 times.
+  This repeats @max_count times.
   """
   def pong(count \\ 0) do
     receive do
       {from, :pong} ->
         send from, {self(), :ping}
     end
-    if (count < 10000) do
-      pong(count + 1)
-    else
-      IO.puts "Done!"
-    end
+    if (count < @max_count), do: pong(count + 1), else: IO.puts "Done!"
   end
 
   @doc """
   Spawn local and remote ping pong processes.
   """
-  def setup(remote) do
+  def setup(nodes) do
+
+    # We're just using a single remote node to begin with
+    # but this could be expanded.
+    remote = List.first(nodes)
+
     ping_pid = Node.spawn remote, __MODULE__, :ping, []
     pong_pid = spawn __MODULE__, :pong, []
     send ping_pid, {pong_pid, :ping}
@@ -58,14 +59,19 @@ defmodule PingPong do
   """
   def start do
 
-    remote = Application.get_env(:ping_pong, :remote)
-    IO.puts("Connecting nodes: #{remote}")
+    # Read remote node info from config
+    nodes = Application.get_env(:ping_pong, :nodes)
+    IO.puts("Connecting nodes: #{inspect nodes}")
 
-    case Node.connect(remote) do
+    status = for node <- nodes, do: Node.connect(node)
+
+    # Are all nodes connected?
+    case Enum.all?(status, &(&1)) do
       true ->
-        setup(remote)
-      reason ->
-        IO.puts "Could not connect to remote machine, reason: #{reason}"
+        setup(nodes)
+      _ ->
+        IO.puts "Could not connect to remote nodes, status: #{inspect status}"
     end
   end
+
 end

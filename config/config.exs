@@ -21,7 +21,10 @@ use Mix.Config
 #     config :logger, level: :info
 #
 
-  config :ping_pong, remote: :"node2@127.0.0.1"
+config :ping_pong, nodes: [
+  :"node2@127.0.0.1",
+  :"node3@127.0.0.1",
+]
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment
