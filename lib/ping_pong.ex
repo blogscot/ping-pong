@@ -30,26 +30,37 @@ defmodule PingPong do
   When a :pong message is recieved return a :ping
   This repeats @max_count times.
   """
-  def pong(count \\ 0) do
+  def pong(sender, count \\ 0) do
     receive do
-      {from, :pong} ->
+      {from, :pong}  ->
         send from, {self(), :ping}
     end
-    if (count < @max_count), do: pong(count + 1), else: IO.puts "Done!"
+
+    if (count < @max_count) do
+      pong(sender, count + 1)
+    else
+      # let the sender know we're done.
+      send sender, {self(), :done}
+    end
   end
 
   @doc """
   Spawn local and remote ping pong processes.
   """
-  def setup(nodes) do
+  def start_processes(nodes) do
 
     # We're just using a single remote node to begin with
     # but this could be expanded.
     remote = List.first(nodes)
 
     ping_pid = Node.spawn remote, __MODULE__, :ping, []
-    pong_pid = spawn __MODULE__, :pong, []
-    send ping_pid, {pong_pid, :ping}
+    pong_pid = spawn __MODULE__, :pong, [self()]
+    send pong_pid, {ping_pid, :pong}
+
+    receive do
+      {^pong_pid, :done} ->
+        IO.puts "Done!"
+    end
   end
 
   @doc """
@@ -57,7 +68,7 @@ defmodule PingPong do
   and sends the initial message to start.
   If there is a connection problem, we give up and go home.
   """
-  def start do
+  def run do
 
     # Read remote node info from config
     nodes = Application.get_env(:ping_pong, :nodes)
@@ -68,7 +79,8 @@ defmodule PingPong do
     # Are all nodes connected?
     case Enum.all?(status, &(&1)) do
       true ->
-        setup(nodes)
+        Measure.this(fn -> start_processes(nodes) end)
+        |> Kernel./(@max_count)
       _ ->
         IO.puts "Could not connect to remote nodes, status: #{inspect status}"
     end

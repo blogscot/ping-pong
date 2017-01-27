@@ -23,7 +23,6 @@ use Mix.Config
 
 config :ping_pong, nodes: [
   :"node2@127.0.0.1",
-  :"node3@127.0.0.1",
 ]
 
 # It is also possible to import configuration files, relative to this
