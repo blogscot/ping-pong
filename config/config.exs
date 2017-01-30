@@ -22,6 +22,8 @@ use Mix.Config
 #
 
 config :ping_pong, nodes: [
+  # :"node2@192.168.56.102",
+  :"node1@127.0.0.1",
   :"node2@127.0.0.1",
 ]
 

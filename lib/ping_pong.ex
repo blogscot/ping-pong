@@ -27,12 +27,12 @@ defmodule PingPong do
   end
 
   @doc """
-  When a :pong message is recieved return a :ping
+  When a :pong message is received return a :ping
   This repeats @max_count times.
   """
-  def pong(sender, count \\ 0) do
+  def pong(sender, count \\ 1) do
     receive do
-      {from, :pong}  ->
+      {from, :pong} ->
         send from, {self(), :ping}
     end
 
@@ -49,17 +49,15 @@ defmodule PingPong do
   """
   def start_processes(nodes) do
 
-    # We're just using a single remote node to begin with
-    # but this could be expanded.
-    remote = List.first(nodes)
+    local  = List.first(nodes)
+    remote = Enum.at(nodes, 1)
 
+    pong_pid = Node.spawn local,  __MODULE__, :pong, [self()]
     ping_pid = Node.spawn remote, __MODULE__, :ping, []
-    pong_pid = spawn __MODULE__, :pong, [self()]
     send pong_pid, {ping_pid, :pong}
 
     receive do
-      {^pong_pid, :done} ->
-        IO.puts "Done!"
+      {^pong_pid, :done} -> IO.puts "Done!"
     end
   end
 
