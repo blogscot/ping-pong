@@ -1,5 +1,7 @@
 defmodule PingPong do
 
+  @payload_length 1
+
   @moduledoc """
   Plays Ping Pong between a local and remote machine.
   Start both machines using short names:
@@ -20,8 +22,8 @@ defmodule PingPong do
   """
   def ping do
     receive do
-      {from, :ping} ->
-        send from, {self(), :pong}
+      {from, :ping, payload} ->
+        send from, {self(), :pong, payload}
     end
     ping()
   end
@@ -30,14 +32,14 @@ defmodule PingPong do
   When a :pong message is received return a :ping
   This repeats @max_count times.
   """
-  def pong(sender, count \\ 1) do
+  def pong(sender, payload, count \\ 1) do
     receive do
-      {from, :pong} ->
-        send from, {self(), :ping}
+      {from, :pong, payload} ->
+        send from, {self(), :ping, payload}
     end
 
     if (count < @max_count) do
-      pong(sender, count + 1)
+      pong(sender, payload, count + 1)
     else
       # let the sender know we're done.
       send sender, {self(), :done}
@@ -47,14 +49,14 @@ defmodule PingPong do
   @doc """
   Spawn local and remote ping pong processes.
   """
-  def start_processes(nodes) do
+  def start_processes(nodes, payload) do
 
     local  = List.first(nodes)
     remote = Enum.at(nodes, 1)
 
-    pong_pid = Node.spawn local,  __MODULE__, :pong, [self()]
-    ping_pid = Node.spawn remote, __MODULE__, :ping, []
-    send pong_pid, {ping_pid, :pong}
+    pong_pid = Node.spawn_link local,  __MODULE__, :pong, [self(), payload]
+    ping_pid = Node.spawn_link remote, __MODULE__, :ping, []
+    send pong_pid, {ping_pid, :pong, payload}
 
     receive do
       {^pong_pid, :done} -> IO.puts "Done!"
@@ -77,7 +79,8 @@ defmodule PingPong do
     # Are all nodes connected?
     case Enum.all?(status, &(&1)) do
       true ->
-        Measure.this(fn -> start_processes(nodes) end)
+        payload = 1..@payload_length |> Enum.to_list
+        Measure.this(fn -> start_processes(nodes, payload) end)
         |> Kernel./(@max_count)
       _ ->
         IO.puts "Could not connect to remote nodes, status: #{inspect status}"
