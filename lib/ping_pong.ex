@@ -1,7 +1,5 @@
 defmodule PingPong do
 
-  @payload_length 1
-
   @moduledoc """
   Plays Ping Pong between a local and remote machine.
   Start both machines using short names:
@@ -15,6 +13,7 @@ defmodule PingPong do
     iex --name node2@127.0.0.1 --cookie fudge -S mix
   """
 
+  @payload_length 1
   @max_count 10_000
 
   @doc """
@@ -32,14 +31,14 @@ defmodule PingPong do
   When a :pong message is received return a :ping
   This repeats @max_count times.
   """
-  def pong(sender, payload, count \\ 1) do
+  def pong(sender, count \\ 1) do
     receive do
       {from, :pong, payload} ->
         send from, {self(), :ping, payload}
     end
 
     if (count < @max_count) do
-      pong(sender, payload, count + 1)
+      pong(sender, count + 1)
     else
       # let the sender know we're done.
       send sender, {self(), :done}
@@ -54,7 +53,7 @@ defmodule PingPong do
     local  = List.first(nodes)
     remote = Enum.at(nodes, 1)
 
-    pong_pid = Node.spawn_link local,  __MODULE__, :pong, [self(), payload]
+    pong_pid = Node.spawn_link local,  __MODULE__, :pong, [self()]
     ping_pid = Node.spawn_link remote, __MODULE__, :ping, []
     send pong_pid, {ping_pid, :pong, payload}
 
